@@ -30,7 +30,7 @@ class Unit_Encoder {
 
    public:
     void begin(TwoWire* wire = &Wire, uint8_t addr = ENCODER_ADDR,
-               uint8_t sda = SDA, uint8_t scl = SCL, uint32_t speed = 200000L);
+               uint8_t sda = SDA, uint8_t scl = SCL, uint32_t speed = 400000L);
     signed short int getEncoderValue();
     bool getButtonStatus();
     void setLEDColor(uint8_t index, uint32_t color);
