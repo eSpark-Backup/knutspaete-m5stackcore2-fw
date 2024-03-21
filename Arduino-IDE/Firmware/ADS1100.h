@@ -47,7 +47,7 @@
     CONFIG REGISTER
     -----------------------------------------------------------------------*/
 	const uint8_t ADS1100_REG_CONFIG_SINGLE_START = 0x80;  // START/STANDBY - ONLY USED FOR SINGLE CONVERION MODE
-    const uint8_t ADS1100_REG_CONFIG_OS_SINGLE = 0x10;  // Single Conversion Mode
+  const uint8_t ADS1100_REG_CONFIG_OS_SINGLE = 0x10;  // Single Conversion Mode
 	const uint8_t ADS1100_REG_CONFIG_OS_CONTINIUS = 0x00;	// Continous Conversion Mode (Default)
 	const uint8_t ADS1100_REG_CONFIG_DR_128SPS = 0x00;	// 128	SPS Data Rate
 	const uint8_t ADS1100_REG_CONFIG_DR_32SPS = 0x04;	// 32	SPS Data Rate
@@ -89,7 +89,7 @@ protected:
  public:
   ADS1100(uint8_t i2cAddress = ADS1100_A0, TwoWire &wirePort = Wire);
   void begin(void);
-  int16_t  readADC(uint8_t mode = ADS1100_REG_CONFIG_OS_SINGLE);
+  int16_t  readADC(uint8_t mode = ADS1100_REG_CONFIG_OS_CONTINIUS);
   void      setGain(adsGain_t gain);
   void		setSPS(adsSPS_t sps);
   void 		writeRegister(uint8_t value);

@@ -23,7 +23,9 @@
 //----------
 
 // PaHUB and ADC/DAC defines
-#define ADC_Conv_Factor       0.273092F               //Conversion Factor for converting raw adc value to mV
+// #define ADC_Conv_Factor       0.273092F               //Conversion Factor for converting raw adc value to mV @8SPS, before removal of pull-up resistors on adc module
+// #define ADC_Conv_Factor       1.092365722F            //Conversion Factor for converting raw adc value to mV @32SPS, before removal of pull-up resistors on adc module
+#define ADC_Conv_Factor       3.32265625F             //Conversion Factor for converting raw adc value to mV @128SPS
 #define ADC_ADDRESS           0x48                    //ADC I2C address
 #define ADC1_CHANNEL          0                       //PaHUB channel ADC1 is connected to
 #define ADC2_CHANNEL          1                       //PaHUB channel ADC2 is connected to
@@ -34,11 +36,13 @@
 //-------------------------
 
 //StepperMotor Defines
+#define Motor_MicroSteps          1                   //microstep setting stepper motor driver is set to
 #define Motor_Steps_per_rev       200                 //number of steps per revolution of StepperMotor
 #define Motor_to_Shaft_Ratio      5.18                //motor to shaft gear ratio
 #define Shaft_to_Fixture_ratio    13.2                //motor to shaft gear ratio
 #define Fixture_timePeriod        60                  //desired timePeriod for fixture's one revolution (in seconds)
-int Motor_PWM = round((Motor_Steps_per_rev * 
+int Motor_PWM = round((Motor_MicroSteps *
+                       Motor_Steps_per_rev * 
                        Motor_to_Shaft_Ratio * 
                        Shaft_to_Fixture_ratio) / 
                        Fixture_timePeriod);
@@ -52,9 +56,10 @@ bool motor_state =    true;
 //------------------
 
 //encoder Defines
-#define Encoder_CHANNEL           3                        //PaHUB channel Encoder is connected to
-#define Encoder_counts_per_rev    60
-#define Encoder_leastCount        360/(float)Encoder_counts_per_rev
+#define Encoder_CHANNEL                 3                        //PaHUB channel Encoder is connected to
+#define Encoder_counts_per_rev          60
+#define Encoder_leastCount              360/(float)Encoder_counts_per_rev
+const float Encoder_fixture_leastCount  ((float)Encoder_leastCount/(float)Shaft_to_Fixture_ratio)   ;
 signed short int  encoder_value[2] = {0}  ;
 signed short int  encoder_pos      =  0   ;
 //---------------
@@ -62,7 +67,7 @@ signed short int  encoder_pos      =  0   ;
 #define Sinusoid_degree           9
 #define dataPoints_per_sinusoid   round(Sinusoid_degree/(float)((float)Encoder_leastCount/(float)Shaft_to_Fixture_ratio))
 
-const int data_points = round(360 / (Encoder_leastCount/Shaft_to_Fixture_ratio));
+const int data_points = round(360 / Encoder_fixture_leastCount);
 float ADC1_Value[data_points] = {NULL};
 float ADC2_Value[data_points] = {NULL};
 float ADC3_Value[data_points] = {NULL};
@@ -85,19 +90,19 @@ Unit_Encoder Encoder;
 //-------------------
 
 // Structure to hold max/min element value and its index
-struct ADC_Values {
-    uint16_t value = NULL;
-    uint8_t  index = NULL;
-};
-struct ADC_Values ADC1_Min_Value[360/Sinusoid_degree];
-struct ADC_Values ADC2_Min_Value[360/Sinusoid_degree];
-struct ADC_Values ADC3_Min_Value[360/Sinusoid_degree];
-struct ADC_Values ADC1_Max_Value[360/Sinusoid_degree];
-struct ADC_Values ADC2_Max_Value[360/Sinusoid_degree];
-struct ADC_Values ADC3_Max_Value[360/Sinusoid_degree];
+// struct ADC_Values {
+//     uint16_t value = NULL;
+//     uint8_t  index = NULL;
+// };
+// struct ADC_Values ADC1_Min_Value[360/Sinusoid_degree];
+// struct ADC_Values ADC2_Min_Value[360/Sinusoid_degree];
+// struct ADC_Values ADC3_Min_Value[360/Sinusoid_degree];
+// struct ADC_Values ADC1_Max_Value[360/Sinusoid_degree];
+// struct ADC_Values ADC2_Max_Value[360/Sinusoid_degree];
+// struct ADC_Values ADC3_Max_Value[360/Sinusoid_degree];
 //------------------------------------------------------
 
-int arrayIndex(int max, int index){       //returns the index in cyclic fashion of an array
+int arrayIndex(int max, int index){       //returns the index in cyclic fashion of an array, not used atm
   if(index<0){
         return max+index;
   }
@@ -122,13 +127,14 @@ void resetVars(){
 
 void selectPaHUB_Channel(int ch){
   if(ch!=selected_channel){
-  int returnCode = PaHUB.selectChannel(ch);
-  if(returnCode==0){
-    Serial.print("Channel"); Serial.print(ch); Serial.println(" selected..");  
-  }
-  else{
-    Serial.println("ERROR; could not select channel");
+    int returnCode = PaHUB.selectChannel(ch);
+    if(returnCode==0){
+      Serial.print("Channel"); Serial.print(ch); Serial.println(" selected..");  
+      selected_channel = ch;
     }
+    else{
+      Serial.println("ERROR; could not select channel");
+      }
   }
 }
 
@@ -141,27 +147,30 @@ void setup() {
   M5.Lcd.setTextDatum(MC_DATUM);
   M5.Lcd.drawString("PLACEHOLDER", 160, 10, 2);
   M5.Lcd.setTextColor(TFT_YELLOW);
-  M5.Lcd.drawString("Start", 70, 220, 2);
+  M5.Lcd.drawString("Start", 60, 220, 2);
   M5.Lcd.drawString("Stop/Start", 160, 220, 2);
-  M5.Lcd.drawString("Dir", 260, 220, 2);
+  M5.Lcd.drawString("Dir", 270, 220, 2);
 
   //Serial.println("ADC RANGE: 0V-VDD When Gain = 1");
   PaHUB.address(TCA9548A_I2C_ADDRESS);
   delay(5);
   selectPaHUB_Channel(ADC1_CHANNEL);
   ADC.setGain(GAIN_ONE);
-  ADC.setSPS(SPS_8);
+  ADC.setSPS(SPS_128);
   ADC.begin();
+  ADC.readADC(ADS1100_REG_CONFIG_OS_CONTINIUS);
   delay(5);
   selectPaHUB_Channel(ADC2_CHANNEL);
   ADC.setGain(GAIN_ONE);
   ADC.setSPS(SPS_8);
   ADC.begin();
+  ADC.readADC(ADS1100_REG_CONFIG_OS_CONTINIUS);
   delay(5);
   selectPaHUB_Channel(ADC3_CHANNEL);
   ADC.setGain(GAIN_ONE);
   ADC.setSPS(SPS_8);
   ADC.begin();
+  ADC.readADC(ADS1100_REG_CONFIG_OS_CONTINIUS);
   delay(5);
   selectPaHUB_Channel(Encoder_CHANNEL);
   Encoder.begin();
@@ -173,7 +182,7 @@ void setup() {
   StepperMotor.setMicrostepResolution(Module_Stepmotor::kMicrosteps1);
   StepperMotor.enableMotor(motor_state);                  //0 to disable, 1 to enable
 
-  ledcSetup(0, Motor_PWM*3, 8);
+  ledcSetup(0, 900, 8);
   ledcAttachPin(X_Step_Pin, 0);
   ledcWrite(0, 127);
 
@@ -183,19 +192,20 @@ void setup() {
 
   pinMode(SSR_Pin, OUTPUT);           //SSR
   pinMode(IR_Pin, INPUT_PULLUP);      //IR sensor
-  digitalWrite(SSR_Pin, HIGH);        //turn on SSR
+  digitalWrite(SSR_Pin, LOW);         //turn off SSR
 
   Serial.print("Calculated PWM for stepperMotor is ");  Serial.println(Motor_PWM);
   Serial.print("data points to be calculated are ");  Serial.println(data_points);
   //Serial.print("Calculated ");  Serial.println();
   Serial.println("Setup complete.");
-  delay(5000);
+  delay(3000);
 }
 
 void loop() {
   M5.update();
   
   if(calibrated==false && inProgress==false){
+    ledcChangeFrequency(0, 900, 8);
     StepperMotor.enableMotor(1);                  //0 to disable, 1 to enable
     while(!digitalRead(IR_Pin)){}
     StepperMotor.enableMotor(0);                  //0 to disable, 1 to enable
@@ -223,6 +233,7 @@ void loop() {
   }
 
   while(inProgress == true && calibrated == true){
+    digitalWrite(SSR_Pin, HIGH);         //turn on SSR
     ledcChangeFrequency(0, Motor_PWM, 8);
     int index = 0;
     StepperMotor.enableMotor(1);                  //0 to disable, 1 to enable
@@ -234,20 +245,23 @@ void loop() {
 
         selectPaHUB_Channel(ADC1_CHANNEL);
         ADC1_Value[index] = ((uint16_t)ADC.readADC() * ADC_Conv_Factor * 2);
-        if(index>=264){
+        if(index>=(data_points/3)){
           selectPaHUB_Channel(ADC2_CHANNEL);
           ADC2_Value[index] = ((uint16_t)ADC.readADC() * ADC_Conv_Factor * 2);
         }
-        if(index>=528){
+        if(index>=((data_points/3)*2)){
           selectPaHUB_Channel(ADC3_CHANNEL);
           ADC2_Value[index] = ((uint16_t)ADC.readADC() * ADC_Conv_Factor * 2);
         }
+        // index = encoder_value[1] - encoder_value[0];    //check this
         index++;
       }
       if(index==data_points){
         StepperMotor.enableMotor(0);                  //0 to disable, 1 to enable
+        digitalWrite(SSR_Pin, LOW);                   //turn off SSR
         inProgress = false;
         for(int i=0; i<data_points; i++){
+          Serial.print(i*Encoder_fixture_leastCount);  Serial.print(",");
           Serial.print(ADC1_Value[i]);  Serial.print(",");
           Serial.print(ADC2_Value[i]);  Serial.print(",");
           Serial.println(ADC3_Value[i]);
