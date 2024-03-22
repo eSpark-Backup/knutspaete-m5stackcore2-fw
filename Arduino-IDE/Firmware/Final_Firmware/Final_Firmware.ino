@@ -5,9 +5,6 @@
   Date: 2024/03/04
 */
 
-//Wire is connected to pins(33, 32) & Wire1 is connected to pins(21, 22)
-
-
 #include "M5Core2.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -15,7 +12,7 @@
 #include "Module_Stepmotor.h"               //for StepperMotor Driver
 #include "ClosedCube_TCA9548A.h"            //for PaHUB
 #include "ADS1100.h"                        //for ADC
-#include "Unit_Encoder.h"                   //Encoder Module
+#include "EMS22A_Encoder.h"                   //Encoder Module
 
 //IR and SSR
 #define IR_Pin                36                      //IR module connected to port B
@@ -30,8 +27,8 @@
 #define ADC1_CHANNEL          0                       //PaHUB channel ADC1 is connected to
 #define ADC2_CHANNEL          1                       //PaHUB channel ADC2 is connected to
 #define ADC3_CHANNEL          2                       //PaHUB channel ADC3 is connected to
-#define DAC_ADDRESS           0x60                    //DAC I2C address
-#define DAC_CHANNEL           4                       //PaHUB channel DAC is connected to
+// #define DAC_ADDRESS           0x60                    //DAC I2C address
+// #define DAC_CHANNEL           4                       //PaHUB channel DAC is connected to
 #define TCA9548A_I2C_ADDRESS	0x70                    //PaHUB I2C address
 //-------------------------
 
@@ -56,12 +53,15 @@ bool motor_state =    true;
 //------------------
 
 //encoder Defines
-#define Encoder_CHANNEL                 3                        //PaHUB channel Encoder is connected to
-#define Encoder_counts_per_rev          60
+#define encoder_CS_PIN    26
+#define encoder_CLK_PIN   33
+#define encoder_DATA_PIN  32
+#define Encoder_counts_per_rev          1024
 #define Encoder_leastCount              360/(float)Encoder_counts_per_rev
-const float Encoder_fixture_leastCount  ((float)Encoder_leastCount/(float)Shaft_to_Fixture_ratio)   ;
+const float Encoder_fixture_leastCount = ((float)Encoder_leastCount/(float)Shaft_to_Fixture_ratio)   ;
 signed short int  encoder_value[2] = {0}  ;
 signed short int  encoder_pos      =  0   ;
+signed short int  count            =  0   ;
 //---------------
 
 #define Sinusoid_degree           9
@@ -86,7 +86,7 @@ uint8_t selected_channel = 10;
 static Module_Stepmotor StepperMotor;
 ClosedCube::Wired::TCA9548A PaHUB;
 ADS1100 ADC(ADS1100_A0);
-Unit_Encoder Encoder;
+EMS22A_Encoder Encoder(encoder_CS_PIN,encoder_CLK_PIN,encoder_DATA_PIN);
 //-------------------
 
 // Structure to hold max/min element value and its index
@@ -129,7 +129,7 @@ void selectPaHUB_Channel(int ch){
   if(ch!=selected_channel){
     int returnCode = PaHUB.selectChannel(ch);
     if(returnCode==0){
-      Serial.print("Channel"); Serial.print(ch); Serial.println(" selected..");  
+      // Serial.print("Channel"); Serial.print(ch); Serial.println(" selected..");  
       selected_channel = ch;
     }
     else{
@@ -139,7 +139,7 @@ void selectPaHUB_Channel(int ch){
 }
 
 void setup() {
-  M5.begin(true, false, true, true);
+  M5.begin(true, false, true, false);
 
   M5.Lcd.clear(TFT_BLACK);
   M5.Lcd.setTextSize(2);

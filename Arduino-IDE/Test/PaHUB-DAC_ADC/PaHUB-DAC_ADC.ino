@@ -20,7 +20,8 @@ uint8_t returnCode = 0;
 
 int toVoltage(float volts){
   float value = (volts*4096)/5;
-  Serial.print(volts);  Serial.print("   ");  Serial.println(value);
+  Serial.println("Setting voltage to,");
+  Serial.print("Voltage: "); Serial.print(volts);  Serial.print("  with value: ");  Serial.println(value);
   return (int)value;
 }
 
@@ -37,8 +38,12 @@ void setup() {
   returnCode = PaHUB.selectChannel(DAC_CHANNEL);
   if(returnCode==0){
     DAC.begin(DAC_ADDRESS);
-	  DAC.setVoltage(toVoltage(1.8), false);
-    Serial.println("DAC configured.");
+	  if(DAC.setVoltage(toVoltage(1.8), false)){
+      Serial.println("DAC configured.");
+    }
+    else{
+      Serial.println("Could not configure DAC.");
+    }
   }
   else{
     Serial.println("ERROR; could not select DAC channel");
