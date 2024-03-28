@@ -64,7 +64,7 @@ signed short int  encoder_pos      =  0   ;
 signed short int  count            =  0   ;
 //---------------
 
-#define Sinusoid_degree           9
+#define Sinusoid_degree           18      //the time period of sinusoid in degrees(°)
 #define dataPoints_per_sinusoid   round(Sinusoid_degree/(float)((float)Encoder_leastCount/(float)Shaft_to_Fixture_ratio))
 
 const int data_points = round(360 / Encoder_fixture_leastCount);

@@ -52,7 +52,7 @@ ADS1100::ADS1100(uint8_t i2cAddress, TwoWire &wirePort)
    _i2cAddress = i2cAddress;
    _i2cPort = &wirePort;
    m_gain = GAIN_ONE;
-   m_sps = SPS_8;
+   m_sps = SPS_128;
    
 }
 
@@ -63,6 +63,10 @@ ADS1100::ADS1100(uint8_t i2cAddress, TwoWire &wirePort)
 /**************************************************************************/
 void ADS1100::begin() {
   _i2cPort->begin();
+  uint8_t config1 = 	m_gain						    		|         // Set Gain Settings
+						ADS1100_REG_CONFIG_OS_CONTINIUS			|         // Set Operation Mode
+						m_sps;									                      // Sample Rate
+  writeRegister(config1);
 }
 
 /**************************************************************************/
@@ -106,13 +110,9 @@ int16_t ADS1100::readADC(uint8_t mode)
 		
 	}
 	else if(mode == ADS1100_REG_CONFIG_OS_CONTINIUS){
-		writeRegister(config1);//Write Configruation Data to Chip
-		delay(5);//Wait for converson to complete
+		// writeRegister(config1);  //Write Configruation Data to Chip
+		// delay(5);                //Wait for converson to complete
 		results = readRegister();//Read Conversion data
 	}
   return results;	
 }
-
-
-
-
